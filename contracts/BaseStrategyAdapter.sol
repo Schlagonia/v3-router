@@ -35,7 +35,7 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
                     NEEDED TO OVERRIDEN BY STRATEGIST
     //////////////////////////////////////////////////////////////*/
 
-    function _invest(uint256 assets, bool _reported) internal virtual;
+    function _invest(uint256 assets) internal virtual;
 
     function _freeFunds(uint256 amount) internal virtual;
 
@@ -98,8 +98,7 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
                 looseWant > _debtOutstanding ? looseWant - _debtOutstanding : 0
             );
         } else {
-            // adjust position should always be safe so we set _reported == true
-            _invest(looseWant, true);
+            _invest(looseWant);
         }
     }
 

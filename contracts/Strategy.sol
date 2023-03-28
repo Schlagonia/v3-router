@@ -9,36 +9,50 @@ import {BaseStrategyAdapter, ERC20} from "./BaseStrategyAdapter.sol";
 // NOTE: Should use the 'asset' variable to get the address of the vaults token rather than 'want'
 // NOTE: To implement permissioned functions you can use the onlyManagement and onlyKeepers modifiers
 
-contract Strategy is BaseStrategyAdapter {
-    constructor(
-        address _asset,
-        address _vault
-    ) BaseStrategyAdapter(_asset, "Strategy Example", _vault) {}
+contract Strategy is BaseStrategy {
+    constructor(address _asset) BaseStrategy(_asset, "yStrategy Example") {}
+
+    /*//////////////////////////////////////////////////////////////
+                NEEDED TO BE OVERRIDEN BY STRATEGIST
+    //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Should invest up to '_amount' of 'asset'.
-     * @dev Should do any needed parameter checks. 0 may be passed in as '_amount'.
+     * @dev Should invest up to '_amount' of 'asset'.
      *
-     * Both permisionless deposits and permissioned reports will lead to this function being called with all currently idle funds sent as '_amount'.
-     * The '_reported' bool is how to differeniate between the two. If true this means it was called at the end of a report with the potential of coming
-     * through a trusted relay and therefore safe to perform otherwise manipulatable transactions.
+     * This function is called at the end of a {deposit} or {mint}
+     * call in V3. Meaning that unless a whitelist is implemented it will
+     * be entirely permsionless and thus can be sandwhiched or otherwise
+     * manipulated.
      *
-     * @param _amount The amount of 'asset' that the strategy should attemppt to deposit in the yield source.
-     * @param _reported Bool repersenting if this is part of a permissined 'report'.
+     * @param _amount The amount of 'asset' that the strategy should attemppt
+     * to deposit in the yield source.
      */
-    function _invest(uint256 _amount, bool _reported) internal override {
+    function _invest(uint256 _amount) internal override {
         // TODO: implement deposit logice EX:
         //
         //      lendingpool.deposit(asset, _amount ,0);
     }
 
     /**
-     * @notice Will attempt to free the '_amount' of 'asset'.
-     * @dev The amount of 'asset' that is already loose has already been accounted for.
+     * @dev Will attempt to free the '_amount' of 'asset'.
      *
-     * Should do any needed parameter checks, '_amount' may be more than is actually available.
+     * The amount of 'asset' that is already loose has already
+     * been accounted for.
      *
-     * Should not rely on asset.balanceOf(address(this)) calls other than for diff accounting puroposes.
+     * This function is called {withdraw} and {redeem} calls in V3.
+     * Meaning that unless a whitelist is implemented it will be
+     * entirely permsionless and thus can be sandwhiched or otherwise
+     * manipulated.
+     *
+     * Should not rely on asset.balanceOf(address(this)) calls other than
+     * for diff accounting puroposes.
+     *
+     * Any difference between `_amount` and what is actually freed will be
+     * counted as a loss and passed on to the withdrawer. This means
+     * care should be taken in times of illiquidity. It may be better to revert
+     * if withdraws are simply illiquid so not to realize incorrect losses.
+     *
+     *  This may get called with `_amount`  being > the actual amount available.
      *
      * @param _amount, The amount of 'asset' to be freed.
      */
@@ -49,18 +63,21 @@ contract Strategy is BaseStrategyAdapter {
     }
 
     /**
-     * @notice Internal non-view function to return the accurate amount of funds currently held by the Strategy
-     * @dev This should do any needed harvesting, rewards selling, accrual etc. to get the most accurate view of current assets.
+     * @dev Internal non-view function to harvest all rewards, reinvest
+     * and return the accurate amount of funds currently held by the Strategy.
      *
-     * This can leave any or all assets uninvested if desired as there will always be a _invest() call at the end of the report
-     * with '_reported' set as true to differentiate between a normal deposit.
+     * This should do any needed harvesting, rewards selling, accrual,
+     * reinvesting etc. to get the most accurate view of current assets.
      *
-     * Care should be taken when relying on oracles or swap values rather than actual amounts as all Strategy profit/loss accounting
-     * will be done based on this returned value.
+     * All applicable assets including loose assets should be accounted
+     * for in this function.
      *
-     * All applicable assets including loose assets should be accounted for in this function.
+     * Care should be taken when relying on oracles or swap values rather
+     * than actual amounts as all Strategy profit/loss accounting will
+     * be done based on this returned value.
      *
-     * @return _invested A trusted and accurate account for the total amount of 'asset' the strategy currently holds.
+     * @return _invested A trusted and accurate account for the total
+     * amount of 'asset' the strategy currently holds.
      */
     function _totalInvested() internal override returns (uint256 _invested) {
         // TODO: Implement harvesting logic and accurate accounting EX:
@@ -74,17 +91,26 @@ contract Strategy is BaseStrategyAdapter {
                     OPTIONAL TO OVERRIDE BY STRATEGIST
     //////////////////////////////////////////////////////////////*/
 
-    // NOTE: Should avoid overriding `harvestTrigger` if possible, rather adjust maxReportDelay post
-    //      deployment for time based harvest cycle which is how V3 should operate
-
     /**
-     * @notice Optional function for strategist to override that can be called in between reports
-     * @dev If '_tend' is used tendTrigger() will also need to be overridden.
+     * @dev Optional function for strategist to override that can
+     *  be called in between reports.
      *
-     * This call can only be called by a persionned role so may be sent through protected relays.
+     * If '_tend' is used tendTrigger() will also need to be overridden.
      *
-     * This can be used to harvest and compound rewards, deposit idle funds, perform needed
-     * poisition maintence or anything else that doesn't need a full report for.
+     * This call can only be called by a persionned role so may be
+     * through protected relays.
+     *
+     * This can be used to harvest and compound rewards, deposit idle funds,
+     * perform needed poisition maintence or anything else that doesn't need
+     * a full report for.
+     *
+     *   EX: A strategy that can not deposit funds without getting
+     *       sandwhiched can use the tend when a certain threshold
+     *       of idle to totalAssets has been reached.
+     *
+     * The library will do all needed debt and idle updates after this
+     * has finished and will have no effect on PPS of the strategy till
+     * report() is called.
      *
      * @param _totalIdle The current amount of idle funds that are available to invest.
      *
@@ -92,16 +118,12 @@ contract Strategy is BaseStrategyAdapter {
     */
 
     /**
-     * @notice Optional trigger to override if tend() will be used by the strategy.
-     * 
-     * @dev This is the V3 tendTrigger to be used. No callCost parameter is needed.
-     * 
+     * @notice Returns wether or not tend() should be called by a keeper.
+     * @dev Optional trigger to override if tend() will be used by the strategy.
      * This must be implemented if the strategy hopes to invoke _tend().
      *
      * @return . Should return true if tend() should be called by keeper or false if not.
      *
-    function tendTrigger() public view virtual returns (bool) {
-        return false;
-    }
+    function tendTrigger() public view virtual returns (bool) {}
     */
 }

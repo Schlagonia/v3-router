@@ -6,11 +6,21 @@ All adaptations are already implemented in BaseStrategyAdapter.sol.
 
 You will only need to override the three functions in Strategy.sol of '_invest', 'freeFunds' and '_totalInvested'. With the option to also override '_tend' and 'tendTrigger' if needed.
 
-## How to start
+NOTE: This cannot be used for V2 Gen lender plugins. Plugins should be ported completely to V3 and not use an adapter using the [Tokenized Strategy Ape Mix](https://github.com/Schlagonia/tokenized-strategy-ape-mix).
 
-### Clone the repo
+## Using Brownie
 
-    git clone https://github.com/Schlagonia/V2-Base-Strategy-Adapter
+This repo utilizes Ape Worx, however the adapter can also be used in an existing Brownie repositories in order to not have to migrate tests.
+
+Simply copy and paste the `Strategy.sol` and `BaseStrategyAdapter.sol` contracts into your Brownie repo in replace of the current Strategy.sol contract and continue to override the same functions you otherwise would have. All existing tests should function properly if logic is implemented properly.
+
+NOTE: You will need to adjust the import path on line 8 of `BaseStrategyAdapter.sol` for the Brownie specific dependencies.
+
+## How to start using Ape
+
+### Fork this repo
+
+    git clone https://github.com/user/V2-Base-Strategy-Adapter
 
     cd V2-Base-Strategy-Adapter
 
