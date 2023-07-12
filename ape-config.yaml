@@ -5,17 +5,17 @@ plugins:
   - name: vyper
   - name: etherscan
   - name: hardhat
-  - name: alchemy
   - name: infura
 
 default_ecosystem: ethereum
+
 dependencies:
   - name: openzeppelin
     github: OpenZeppelin/openzeppelin-contracts
-    version: 4.7.1
+    ref: 4.7.1
   - name: yearnV2
     github: yearn/yearn-vaults
-    version: 0.4.6
+    ref: 0.4.6
 
 solidity:
   import_remapping:

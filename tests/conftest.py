@@ -83,7 +83,7 @@ def vault(gov, rewards, guardian, management, token):
 
 @pytest.fixture
 def strategy(strategist, keeper, vault, gov, token):
-    strategy = strategist.deploy(project.Strategy, token, vault)
+    strategy = strategist.deploy(project.Strategy, token, "Strategy", vault)
     strategy.setKeeper(keeper, sender=strategist)
     vault.addStrategy(strategy, 10_000, 0, 2**256 - 1, 0, sender=gov)
     yield strategy

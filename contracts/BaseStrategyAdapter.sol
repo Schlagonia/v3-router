@@ -1,17 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0
 // Feel free to change the license, but this is what we use
-
-pragma solidity ^0.8.15;
+pragma solidity 0.8.18;
 pragma experimental ABIEncoderV2;
 
 // These are the core Yearn libraries
-import {BaseStrategy, StrategyParams, ERC20} from "@yearnV2/BaseStrategy.sol";
+import {BaseStrategy, StrategyParams} from "@yearnV2/BaseStrategy.sol";
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
+interface ITokenizedStrategy {
+    function isShutdown() external view returns (bool);
+
+    function totalIdle() external view returns (uint256);
+
+    function totalDebt() external view returns (uint256);
+
+    function totalAssets() external view returns (uint256);
+}
 
 abstract contract BaseStrategyAdapter is BaseStrategy {
     address internal asset;
     string internal _name;
+    // Used to simulate the TokenizedStrategy variable in V3 strategies.
+    ITokenizedStrategy internal TokenizedStrategy;
 
     // forward the V3 modifier to the V2 version
     modifier onlyManagement() {
@@ -27,6 +38,7 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
         require(_asset == address(want), "Wrong token");
         asset = _asset;
         _name = _name_;
+        TokenizedStrategy = ITokenizedStrategy(address(this));
     }
 
     // ******** OVERRIDE THESE METHODS IN THE IMPLEMENTATION CONTRACT ************ \\
@@ -35,11 +47,16 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
                     NEEDED TO OVERRIDEN BY STRATEGIST
     //////////////////////////////////////////////////////////////*/
 
-    function _invest(uint256 assets) internal virtual;
+    function _deployFunds(uint256 assets) internal virtual;
 
     function _freeFunds(uint256 amount) internal virtual;
 
-    function _totalInvested() internal virtual returns (uint256 _invested);
+    function _harvestAndReport()
+        internal
+        virtual
+        returns (uint256 _totalAssets);
+
+    function _emergencyWithdraw(uint256 _amount) internal virtual;
 
     /*//////////////////////////////////////////////////////////////
                     OPTIONAL TO OVERRIDE BY STRATEGIST
@@ -49,6 +66,26 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
 
     function tendTrigger() public view virtual returns (bool) {
         return false;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    TOKENIZED STRATEGY REPLACEMENTS
+    //////////////////////////////////////////////////////////////*/
+
+    function isShutdown() external view returns (bool) {
+        return emergencyExit;
+    }
+
+    function totalIdle() public view returns (uint256) {
+        return want.balanceOf(address(this));
+    }
+
+    function totalDebt() external view returns (uint256) {
+        return estimatedTotalAssets() - totalIdle();
+    }
+
+    function totalAssets() external view returns (uint256) {
+        return estimatedTotalAssets();
     }
 
     // ******** BASE STRATEGY FUNCTIONS TO ROUTE TO V3 IMPLEMENTATION ************ \\
@@ -69,7 +106,7 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
         returns (uint256 _profit, uint256 _loss, uint256 _debtPayment)
     {
         // _totalInvested should account for all funds the strategy curently has
-        uint256 totalAssets = _totalInvested();
+        uint256 totalAssets = _harvestAndReport();
         uint256 totalDebt = vault.strategies(address(this)).totalDebt;
 
         if (totalDebt > totalAssets) {
@@ -98,7 +135,7 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
                 looseWant > _debtOutstanding ? looseWant - _debtOutstanding : 0
             );
         } else {
-            _invest(looseWant);
+            _deployFunds(looseWant);
         }
     }
 
@@ -111,11 +148,11 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
             _freeFunds(_amountNeeded - looseWant);
         }
 
-        uint256 totalAssets = want.balanceOf(address(this));
-        if (_amountNeeded > totalAssets) {
-            _liquidatedAmount = totalAssets;
+        looseWant = want.balanceOf(address(this));
+        if (_amountNeeded > looseWant) {
+            _liquidatedAmount = looseWant;
             unchecked {
-                _loss = _amountNeeded - totalAssets;
+                _loss = _amountNeeded - looseWant;
             }
         } else {
             _liquidatedAmount = _amountNeeded;
@@ -123,7 +160,7 @@ abstract contract BaseStrategyAdapter is BaseStrategy {
     }
 
     function liquidateAllPositions() internal override returns (uint256) {
-        _freeFunds(vault.strategies(address(this)).totalDebt);
+        _emergencyWithdraw(vault.strategies(address(this)).totalDebt);
         return want.balanceOf(address(this));
     }
 
