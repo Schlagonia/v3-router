@@ -21,7 +21,7 @@ contract V3Router is BaseStrategyInitializable {
         initializeThis(_strategy);
     }
 
-    function CloneV3Router(
+    function cloneV3Router(
         address _vault,
         address _strategy,
         address _strategist,
