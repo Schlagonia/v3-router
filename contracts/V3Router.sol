@@ -33,7 +33,7 @@ contract V3Router is BaseStrategyInitializable {
     }
 
     function initializeThis(address _strategy) public {
-        require(address(strategy) == address(0), "!initiallized");
+        require(address(strategy) == address(0), "!initialized");
         require(IStrategy(_strategy).asset() == address(want), "wrong want");
 
         want.safeApprove(_strategy, type(uint256).max);
@@ -137,7 +137,10 @@ contract V3Router is BaseStrategyInitializable {
     }
 
     function prepareMigration(address _newStrategy) internal override {
-        strategy.transfer(_newStrategy, strategy.balanceOf(address(this)));
+        uint256 balance = strategy.balanceOf(address(this));
+        if (balance > 0) {
+            strategy.transfer(_newStrategy, balance);
+        }
     }
 
     function setMaxLoss(uint256 _newMaxLoss) external onlyAuthorized {
