@@ -114,11 +114,11 @@ contract V3Router is BaseStrategyInitializable {
             );
         }
 
-        uint256 totalAssets = want.balanceOf(address(this));
-        if (_amountNeeded > totalAssets) {
-            _liquidatedAmount = totalAssets;
+        balance = balanceOfWant();
+        if (_amountNeeded > balance) {
+            _liquidatedAmount = balance;
             unchecked {
-                _loss = _amountNeeded - totalAssets;
+                _loss = _amountNeeded - balance;
             }
         } else {
             _liquidatedAmount = _amountNeeded;
