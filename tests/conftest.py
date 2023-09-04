@@ -38,17 +38,15 @@ def keeper(accounts):
 
 
 @pytest.fixture
-def token(weth):
-    yield weth
-    # token_address = "0x6b175474e89094c44da98b954eedeac495271d0f"  # this should be the address of the ERC-20 used by the strategy/vault (DAI)
-    # yield Contract(token_address)
+def token(dai):
+    yield dai
 
 
-@pytest.fixture
+@pytest.fixture 
 def whale(accounts):
     # In order to get some funds for the token you are about to use,
     # it impersonate an exchange address to use it's funds.
-    yield accounts["0x030bA81f1c18d280636F32af80b9AAd02Cf0854e"]
+    yield accounts["0x6B175474E89094C44Da98b954EedeAC495271d0F"]
 
 
 @pytest.fixture
@@ -60,22 +58,22 @@ def amount(token, user, whale):
 
 
 @pytest.fixture
-def weth():
-    token_address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+def dai():
+    token_address = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
     yield Contract(token_address)
 
 
 @pytest.fixture
-def weth_amount(user, weth):
-    weth_amount = 10 ** weth.decimals()
-    user.transfer(weth, weth_amount)
-    yield weth_amount
+def dai_amount(user, dai):
+    dai_amount = 10 ** dai.decimals()
+    user.transfer(dai, dai_amount)
+    yield dai_amount
 
 
 @pytest.fixture
 def v3_strategy(token, strategist):
-    v3_strategy = strategist.deploy(project.MockV3Strategy, token, "Mock V3 Strategy")
-    v3_strategy = project.IStrategyInterface.at(v3_strategy.address)
+    # v3_strategy = strategist.deploy(project.MockV3Strategy, token, "Mock V3 Strategy")
+    v3_strategy = project.IStrategyInterface.at("0x9CeDB174BD547f9a0f99Dca63660710d59B75AD4")
     yield v3_strategy
 
 

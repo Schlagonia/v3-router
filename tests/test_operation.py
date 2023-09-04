@@ -182,8 +182,8 @@ def test_triggers(
     token,
     amount,
     user,
-    weth,
-    weth_amount,
+    dai,
+    dai_amount,
     strategist,
     keeper,
 ):
