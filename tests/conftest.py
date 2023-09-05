@@ -29,12 +29,12 @@ def management(accounts):
 
 @pytest.fixture
 def strategist(accounts):
-    yield accounts[4]
+    yield accounts["0x6Ba1734209a53a6E63C39D4e36612cc856A34D56"]
 
 
 @pytest.fixture
 def keeper(accounts):
-    yield accounts[5]
+    yield accounts["0x736D7e3c5a6CB2CE3B764300140ABF476F6CFCCF"]
 
 
 @pytest.fixture
@@ -61,13 +61,6 @@ def amount(token, user, whale):
 def dai():
     token_address = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
     yield Contract(token_address)
-
-
-@pytest.fixture
-def dai_amount(user, dai):
-    dai_amount = 10 ** dai.decimals()
-    user.transfer(dai, dai_amount)
-    yield dai_amount
 
 
 @pytest.fixture

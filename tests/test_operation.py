@@ -5,13 +5,11 @@ import pytest
 
 def test_operation(
     chain,
-    accounts,
     token,
     vault,
     strategy,
     v3_strategy,
     user,
-    strategist,
     amount,
     RELATIVE_APPROX,
     keeper,
@@ -37,14 +35,12 @@ def test_operation(
 
 def test_emergency_exit(
     chain,
-    accounts,
     gov,
     token,
     vault,
     strategy,
     v3_strategy,
     user,
-    strategist,
     amount,
     RELATIVE_APPROX,
     keeper,
@@ -66,7 +62,6 @@ def test_emergency_exit(
 
 def test_profitable_harvest(
     chain,
-    accounts,
     token,
     vault,
     strategy,
@@ -116,7 +111,6 @@ def test_change_debt(
     strategy,
     v3_strategy,
     user,
-    strategist,
     amount,
     RELATIVE_APPROX,
     keeper,
@@ -182,11 +176,9 @@ def test_triggers(
     token,
     amount,
     user,
-    dai,
-    dai_amount,
-    strategist,
     keeper,
 ):
+    assert 0 == 0
     # Deposit to the vault and harvest
     token.approve(vault.address, amount, sender=user)
     vault.deposit(amount, sender=user)
