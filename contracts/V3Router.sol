@@ -11,28 +11,36 @@ import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
 contract V3Router is BaseStrategyInitializable {
     using SafeERC20 for IERC20;
 
+    // V3 strategy to use.
     IStrategy public strategy;
+
+    // Max loss for withdraws.
     uint256 public maxLoss;
+
+    // Strategy specific name.
+    string internal _name;
 
     constructor(
         address _vault,
-        address _strategy
+        address _strategy,
+        string memory name_
     ) BaseStrategyInitializable(_vault) {
-        initializeThis(_strategy);
+        initializeThis(_strategy, name_);
     }
 
     function cloneV3Router(
         address _vault,
         address _strategy,
+        string memory name_,
         address _strategist,
         address _rewards,
         address _keeper
     ) external returns (address _newV3Router) {
         _newV3Router = clone(_vault, _strategist, _rewards, _keeper);
-        V3Router(_newV3Router).initializeThis(_strategy);
+        V3Router(_newV3Router).initializeThis(_strategy, name_);
     }
 
-    function initializeThis(address _strategy) public {
+    function initializeThis(address _strategy, string memory name_) public {
         require(address(strategy) == address(0), "!initialized");
         require(IStrategy(_strategy).asset() == address(want), "wrong want");
 
@@ -40,12 +48,17 @@ contract V3Router is BaseStrategyInitializable {
         strategy = IStrategy(_strategy);
         // Default to 1bps max loss
         maxLoss = 1;
+
+        _name = name_;
+
+        // Set health check
+        healthCheck = 0xDDCea799fF1699e98EDF118e0629A974Df7DF012;
     }
 
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
 
     function name() external view override returns (string memory) {
-        return "V3 Router";
+        return _name;
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {

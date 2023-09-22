@@ -5,7 +5,7 @@ import pytest
 
 def clone_strategy(original, v3_strategy, vault, strategist, rewards, keeper, gov):
     tx = original.cloneV3Router(
-        vault, v3_strategy, strategist, rewards, keeper, sender=strategist
+        vault, v3_strategy, "test clone", strategist, rewards, keeper, sender=strategist
     )
     event = list(tx.decode_logs(original.Cloned))
     clone = project.V3Router.at(event[0].clone)
