@@ -8,7 +8,7 @@ def deploy():
     signer.deploy(
         project.V3Router,
         "",  # V2 Vault
-        "",  # V3 Strategy
+        "",  # V3 Vault
         gas="3_000_000",
         max_priority_fee="0.000001 gwei",
         max_fee="35 gwei",

@@ -1,14 +1,20 @@
 {
+  "name": "v3_router",
   "devDependencies": {
     "@commitlint/cli": "^17.0.0",
     "@commitlint/config-conventional": "^17.0.0",
-    "hardhat": "^2.10.1",
-    "prettier": "^2.7.1",
-    "prettier-plugin-solidity": "^1.0.0-alpha.57",
-    "pretty-quick": "^3.0.2"
+    "@openzeppelin/contracts": "^4.8.2",
+    "hardhat": "^2.19.1",
+    "prettier": "^2.5.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.19",
+    "pretty-quick": "^3.1.3",
+    "solc": "^0.8.14",
+    "solhint": "^3.3.7",
+    "solhint-plugin-prettier": "^0.0.5"
   },
   "scripts": {
-    "lint": "prettier --write '**/*.sol' '**/*.json'",
-    "lint:check": "prettier --check '**/*.sol' ''**/*.json''"
+    "format": "prettier --write '**/*.sol' '**/*.json'",
+    "format:check": "prettier --check '**/*.sol' ''**/*.json''",
+    "lint": "solhint 'contracts/**/*.sol'"
   }
 }

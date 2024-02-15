@@ -2,17 +2,17 @@
 pragma solidity ^0.8.15;
 pragma experimental ABIEncoderV2;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+// V3 vault and strategy use the same relevant interface.
+import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
 // These are the core Yearn libraries
 import {BaseStrategyInitializable, StrategyParams, SafeERC20, IERC20} from "@yearnV2/BaseStrategy.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
-import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
 
 contract V3Router is BaseStrategyInitializable {
     using SafeERC20 for IERC20;
 
-    // V3 strategy to use.
-    IStrategy public strategy;
+    // V3 vault to use.
+    IStrategy public v3Vault;
 
     // Max loss for withdraws.
     uint256 public maxLoss;
@@ -22,30 +22,30 @@ contract V3Router is BaseStrategyInitializable {
 
     constructor(
         address _vault,
-        address _strategy,
+        address _v3Vault,
         string memory name_
     ) BaseStrategyInitializable(_vault) {
-        initializeThis(_strategy, name_);
+        initializeThis(_v3Vault, name_);
     }
 
     function cloneV3Router(
         address _vault,
-        address _strategy,
+        address _v3Vault,
         string memory name_,
         address _strategist,
         address _rewards,
         address _keeper
     ) external returns (address _newV3Router) {
         _newV3Router = clone(_vault, _strategist, _rewards, _keeper);
-        V3Router(_newV3Router).initializeThis(_strategy, name_);
+        V3Router(_newV3Router).initializeThis(_v3Vault, name_);
     }
 
-    function initializeThis(address _strategy, string memory name_) public {
-        require(address(strategy) == address(0), "!initialized");
-        require(IStrategy(_strategy).asset() == address(want), "wrong want");
+    function initializeThis(address _v3Vault, string memory name_) public {
+        require(address(v3Vault) == address(0), "!initialized");
+        require(IStrategy(_v3Vault).asset() == address(want), "wrong want");
 
-        want.safeApprove(_strategy, type(uint256).max);
-        strategy = IStrategy(_strategy);
+        want.safeApprove(_v3Vault, type(uint256).max);
+        v3Vault = IStrategy(_v3Vault);
         // Default to 1bps max loss
         maxLoss = 1;
 
@@ -62,15 +62,15 @@ contract V3Router is BaseStrategyInitializable {
     }
 
     function estimatedTotalAssets() public view override returns (uint256) {
-        return balanceOfWant() + balanceOfStrategy();
+        return balanceOfWant() + balanceOfVault();
     }
 
     function balanceOfWant() public view returns (uint256) {
         return want.balanceOf(address(this));
     }
 
-    function balanceOfStrategy() public view returns (uint256) {
-        return strategy.convertToAssets(strategy.balanceOf(address(this)));
+    function balanceOfVault() public view returns (uint256) {
+        return v3Vault.convertToAssets(v3Vault.balanceOf(address(this)));
     }
 
     function prepareReturn(
@@ -80,7 +80,6 @@ contract V3Router is BaseStrategyInitializable {
         override
         returns (uint256 _profit, uint256 _loss, uint256 _debtPayment)
     {
-        // _totalInvested should account for all funds the strategy curently has
         uint256 totalAssets = estimatedTotalAssets();
         uint256 totalDebt = vault.strategies(address(this)).totalDebt;
 
@@ -103,13 +102,18 @@ contract V3Router is BaseStrategyInitializable {
         _debtPayment = Math.min(_debtOutstanding, _amountFreed);
 
         //Adjust profit in case we had any losses from liquidatePosition
-        _profit = _amountFreed - _debtPayment;
+        unchecked {
+            _profit = _amountFreed - _debtPayment;
+        }
     }
 
-    function adjustPosition(uint256 _debtOutstanding) internal override {
-        uint256 balance = balanceOfWant();
+    function adjustPosition(uint256) internal override {
+        uint256 balance = Math.min(
+            balanceOfWant(),
+            v3Vault.maxDeposit(address(this))
+        );
         if (balance > 0) {
-            strategy.deposit(balance, address(this));
+            v3Vault.deposit(balance, address(this));
         }
     }
 
@@ -119,8 +123,13 @@ contract V3Router is BaseStrategyInitializable {
         uint256 balance = balanceOfWant();
 
         if (_amountNeeded > balance) {
-            strategy.withdraw(
-                _amountNeeded - balance,
+            _amountNeeded = Math.min(
+                _amountNeeded,
+                v3Vault.convertToAssets(v3Vault.maxRedeem(address(this)))
+            );
+
+            v3Vault.redeem(
+                v3Vault.convertToShares(_amountNeeded),
                 address(this),
                 address(this),
                 maxLoss
@@ -139,8 +148,8 @@ contract V3Router is BaseStrategyInitializable {
     }
 
     function liquidateAllPositions() internal override returns (uint256) {
-        strategy.redeem(
-            strategy.balanceOf(address(this)),
+        v3Vault.redeem(
+            v3Vault.balanceOf(address(this)),
             address(this),
             address(this),
             maxLoss
@@ -150,9 +159,9 @@ contract V3Router is BaseStrategyInitializable {
     }
 
     function prepareMigration(address _newStrategy) internal override {
-        uint256 balance = strategy.balanceOf(address(this));
+        uint256 balance = v3Vault.balanceOf(address(this));
         if (balance > 0) {
-            strategy.transfer(_newStrategy, balance);
+            v3Vault.transfer(_newStrategy, balance);
         }
     }
 
@@ -170,7 +179,6 @@ contract V3Router is BaseStrategyInitializable {
     function ethToWant(
         uint256 _amtInWei
     ) public view virtual override returns (uint256) {
-        // TODO create an accurate price oracle
         return _amtInWei;
     }
 }

@@ -73,10 +73,10 @@ def weth_amount(user, weth):
 
 
 @pytest.fixture
-def v3_strategy(token, strategist):
-    v3_strategy = strategist.deploy(project.MockV3Strategy, token, "Mock V3 Strategy")
-    v3_strategy = project.IStrategyInterface.at(v3_strategy.address)
-    yield v3_strategy
+def v3_vault(token, strategist):
+    v3_vault = strategist.deploy(project.MockV3Strategy, token, "Mock V3 Strategy")
+    v3_vault = project.IStrategyInterface.at(v3_vault.address)
+    yield v3_vault
 
 
 @pytest.fixture
@@ -89,8 +89,8 @@ def vault(gov, rewards, guardian, management, token):
 
 
 @pytest.fixture
-def strategy(strategist, v3_strategy, keeper, vault, gov, token):
-    strategy = strategist.deploy(project.V3Router, vault, v3_strategy, "test strategy")
+def strategy(strategist, v3_vault, keeper, vault, gov, token):
+    strategy = strategist.deploy(project.V3Router, vault, v3_vault, "test strategy")
     strategy.setKeeper(keeper, sender=strategist)
     vault.addStrategy(strategy, 10_000, 0, 2**256 - 1, 0, sender=gov)
     yield strategy

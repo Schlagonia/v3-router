@@ -1,6 +1,6 @@
 # V3 Router
 
-V2 strategy that routes funds to a V3 strategy
+V2 strategy that routes funds to a V3 Vault
 
 ## How to start using Ape
 
