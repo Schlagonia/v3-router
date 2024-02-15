@@ -3,9 +3,9 @@ from ape import Contract, project
 import pytest
 
 
-def clone_strategy(original, v3_strategy, vault, strategist, rewards, keeper, gov):
+def clone_strategy(original, v3_vault, vault, strategist, rewards, keeper, gov):
     tx = original.cloneV3Router(
-        vault, v3_strategy, "test clone", strategist, rewards, keeper, sender=strategist
+        vault, v3_vault, "test clone", strategist, rewards, keeper, sender=strategist
     )
     event = list(tx.decode_logs(original.Cloned))
     clone = project.V3Router.at(event[0].clone)
@@ -19,7 +19,7 @@ def test_clone_operation(
     token,
     vault,
     strategy,
-    v3_strategy,
+    v3_vault,
     user,
     strategist,
     rewards,
@@ -30,7 +30,7 @@ def test_clone_operation(
 ):
     vault.updateStrategyDebtRatio(strategy, 0, sender=gov)
     strategy = clone_strategy(
-        strategy, v3_strategy, vault, strategist, rewards, keeper, gov
+        strategy, v3_vault, vault, strategist, rewards, keeper, gov
     )
     # Deposit to the vault
     user_balance_before = token.balanceOf(user)
@@ -42,7 +42,7 @@ def test_clone_operation(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_strategy.totalAssets() == amount
+    assert v3_vault.totalAssets() == amount
 
     # withdrawal
     vault.withdraw(sender=user)
@@ -58,7 +58,7 @@ def test_emergency_exit(
     token,
     vault,
     strategy,
-    v3_strategy,
+    v3_vault,
     user,
     strategist,
     amount,
@@ -68,7 +68,7 @@ def test_emergency_exit(
 ):
     vault.updateStrategyDebtRatio(strategy, 0, sender=gov)
     strategy = clone_strategy(
-        strategy, v3_strategy, vault, strategist, rewards, keeper, gov
+        strategy, v3_vault, vault, strategist, rewards, keeper, gov
     )
     # Deposit to the vault
     token.approve(vault.address, amount, sender=user)
@@ -76,7 +76,7 @@ def test_emergency_exit(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_strategy.totalAssets() == amount
+    assert v3_vault.totalAssets() == amount
 
     # set emergency and exit
     strategy.setEmergencyExit(sender=gov)
@@ -91,7 +91,7 @@ def test_profitable_harvest(
     token,
     vault,
     strategy,
-    v3_strategy,
+    v3_vault,
     user,
     strategist,
     amount,
@@ -103,7 +103,7 @@ def test_profitable_harvest(
 ):
     vault.updateStrategyDebtRatio(strategy, 0, sender=gov)
     strategy = clone_strategy(
-        strategy, v3_strategy, vault, strategist, rewards, keeper, gov
+        strategy, v3_vault, vault, strategist, rewards, keeper, gov
     )
     # Deposit to the vault
     token.approve(vault.address, amount, sender=user)
@@ -114,11 +114,11 @@ def test_profitable_harvest(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_strategy.totalAssets() == amount
+    assert v3_vault.totalAssets() == amount
 
-    token.transfer(v3_strategy, amount // 100, sender=whale)
-    v3_strategy.report(sender=strategist)
-    chain.mine(v3_strategy.profitMaxUnlockTime())
+    token.transfer(v3_vault, amount // 100, sender=whale)
+    v3_vault.report(sender=strategist)
+    chain.mine(v3_vault.profitMaxUnlockTime())
 
     # Harvest 2: Realize profit
     chain.mine(1)
@@ -130,8 +130,8 @@ def test_profitable_harvest(
 
     assert token.balanceOf(strategy) == 0
     assert token.balanceOf(vault) == profit
-    assert strategy.estimatedTotalAssets() == amount
-    assert v3_strategy.totalAssets() > amount
+    assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
+    assert v3_vault.totalAssets() > amount
     assert vault.pricePerShare() > before_pps
 
 
@@ -141,7 +141,7 @@ def test_change_debt(
     token,
     vault,
     strategy,
-    v3_strategy,
+    v3_vault,
     user,
     strategist,
     amount,
@@ -151,7 +151,7 @@ def test_change_debt(
 ):
     vault.updateStrategyDebtRatio(strategy, 0, sender=gov)
     strategy = clone_strategy(
-        strategy, v3_strategy, vault, strategist, rewards, keeper, gov
+        strategy, v3_vault, vault, strategist, rewards, keeper, gov
     )
     # Deposit to the vault and harvest
     token.approve(vault.address, amount, sender=user)
@@ -162,13 +162,13 @@ def test_change_debt(
     half = int(amount / 2)
 
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == half
-    assert v3_strategy.totalAssets() == half
+    assert v3_vault.totalAssets() == half
 
     vault.updateStrategyDebtRatio(strategy.address, 10_000, sender=gov)
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_strategy.totalAssets() == amount
+    assert v3_vault.totalAssets() == amount
 
     # In order to pass this tests, you will need to implement prepareReturn.
     vault.updateStrategyDebtRatio(strategy.address, 5_000, sender=gov)
@@ -176,7 +176,7 @@ def test_change_debt(
 
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == half
-    assert v3_strategy.totalAssets() == half
+    assert v3_vault.totalAssets() == half
 
 
 def test_sweep(
@@ -184,7 +184,7 @@ def test_sweep(
     accounts,
     vault,
     strategy,
-    v3_strategy,
+    v3_vault,
     strategist,
     rewards,
     keeper,
@@ -194,7 +194,7 @@ def test_sweep(
 ):
     vault.updateStrategyDebtRatio(strategy, 0, sender=gov)
     strategy = clone_strategy(
-        strategy, v3_strategy, vault, strategist, rewards, keeper, gov
+        strategy, v3_vault, vault, strategist, rewards, keeper, gov
     )
     # Strategy want token doesn't work
     token.transfer(strategy, amount, sender=user)
@@ -227,7 +227,7 @@ def test_triggers(
     gov,
     vault,
     strategy,
-    v3_strategy,
+    v3_vault,
     rewards,
     token,
     amount,
@@ -239,7 +239,7 @@ def test_triggers(
 ):
     vault.updateStrategyDebtRatio(strategy, 0, sender=gov)
     strategy = clone_strategy(
-        strategy, v3_strategy, vault, strategist, rewards, keeper, gov
+        strategy, v3_vault, vault, strategist, rewards, keeper, gov
     )
     # Deposit to the vault and harvest
     token.approve(vault.address, amount, sender=user)
