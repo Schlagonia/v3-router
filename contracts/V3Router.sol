@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.15;
-pragma experimental ABIEncoderV2;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 // V3 vault and strategy use the same relevant interface.
