@@ -107,12 +107,12 @@ contract V3Router is BaseStrategyInitializable {
     }
 
     function adjustPosition(uint256) internal override {
-        uint256 balance = Math.min(
+        uint256 toDeploy = Math.min(
             balanceOfWant(),
             v3Vault.maxDeposit(address(this))
         );
-        if (balance > 0) {
-            v3Vault.deposit(balance, address(this));
+        if (toDeploy > 0) {
+            v3Vault.deposit(toDeploy, address(this));
         }
     }
 
@@ -170,6 +170,7 @@ contract V3Router is BaseStrategyInitializable {
     }
 
     function setMaxLoss(uint256 _newMaxLoss) external onlyAuthorized {
+        require(_newMaxLoss < 10_000, "too high");
         maxLoss = _newMaxLoss;
     }
 
