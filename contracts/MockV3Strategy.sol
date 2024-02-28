@@ -9,6 +9,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 contract MockV3Strategy is BaseStrategy {
     using SafeERC20 for ERC20;
 
+    uint256 public withdrawable = type(uint256).max;
+
     constructor(
         address _asset,
         string memory _name
@@ -24,5 +26,15 @@ contract MockV3Strategy is BaseStrategy {
         returns (uint256 _totalAssets)
     {
         _totalAssets = asset.balanceOf(address(this));
+    }
+
+    function availableWithdrawLimit(
+        address
+    ) public view override returns (uint256) {
+        return withdrawable;
+    }
+
+    function setWithdrawable(uint256 _withdrawable) external {
+        withdrawable = _withdrawable;
     }
 }

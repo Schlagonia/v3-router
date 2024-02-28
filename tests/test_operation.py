@@ -35,6 +35,48 @@ def test_operation(
     )
 
 
+def test_illiquid_v3_vault(
+    chain,
+    accounts,
+    token,
+    vault,
+    strategy,
+    v3_vault,
+    user,
+    strategist,
+    amount,
+    RELATIVE_APPROX,
+    keeper,
+):
+    # Deposit to the vault
+    token.approve(vault.address, amount, sender=user)
+    vault.deposit(amount, sender=user)
+    assert token.balanceOf(vault.address) == amount
+
+    # harvest
+    chain.mine(1)
+    strategy.harvest(sender=keeper)
+    assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
+    assert v3_vault.totalAssets() == amount
+
+    withdrawable = amount // 2
+    v3_vault.setWithdrawable(withdrawable, sender=strategist)
+
+    assert v3_vault.maxWithdraw(strategy) == withdrawable
+
+    user_balance_before = token.balanceOf(user)
+
+    # withdrawal
+    vault.withdraw(sender=user)
+
+    # should have withdrawn half and still have half their shares.
+    assert vault.balanceOf(user) == amount - withdrawable
+    assert (
+        pytest.approx(token.balanceOf(user), rel=RELATIVE_APPROX)
+        == withdrawable + user_balance_before
+    )
+
+
 def test_emergency_exit(
     chain,
     accounts,
