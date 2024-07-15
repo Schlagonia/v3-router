@@ -97,7 +97,7 @@ contract V3Router is BaseStrategyInitializable {
         uint256 _amountFreed;
         (_amountFreed, _loss) = liquidatePosition(_debtOutstanding + _profit);
 
-        if (_loss > profit) {
+        if (_loss > _profit) {
             _profit = 0;
             _loss -= _profit;
             _debtPayment = _amountFreed;
