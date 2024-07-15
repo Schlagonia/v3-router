@@ -3,7 +3,7 @@ pragma solidity ^0.8.15;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 // V3 vault and strategy use the same relevant interface.
-import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
+import {IVault} from "./interfaces/IVault.sol";
 // These are the core Yearn libraries
 import {BaseStrategyInitializable, StrategyParams, SafeERC20, IERC20} from "@yearnV2/BaseStrategy.sol";
 
@@ -11,7 +11,7 @@ contract V3Router is BaseStrategyInitializable {
     using SafeERC20 for IERC20;
 
     // V3 vault to use.
-    IStrategy public v3Vault;
+    IVault public v3Vault;
 
     // Max loss for withdraws.
     uint256 public maxLoss;
@@ -41,10 +41,10 @@ contract V3Router is BaseStrategyInitializable {
 
     function initializeThis(address _v3Vault, string memory name_) public {
         require(address(v3Vault) == address(0), "!initialized");
-        require(IStrategy(_v3Vault).asset() == address(want), "wrong want");
+        require(IVault(_v3Vault).asset() == address(want), "wrong want");
 
         want.safeApprove(_v3Vault, type(uint256).max);
-        v3Vault = IStrategy(_v3Vault);
+        v3Vault = IVault(_v3Vault);
         // Default to 1bps max loss
         maxLoss = 1;
 
@@ -94,15 +94,17 @@ contract V3Router is BaseStrategyInitializable {
             }
         }
 
-        (uint256 _amountFreed, ) = liquidatePosition(
-            _debtOutstanding + _profit
-        );
+        uint256 _amountFreed;
+        (_amountFreed, _loss) = liquidatePosition(_debtOutstanding + _profit);
 
-        _debtPayment = Math.min(_debtOutstanding, _amountFreed);
-
-        //Adjust profit in case we had any losses from liquidatePosition
-        unchecked {
-            _profit = _amountFreed - _debtPayment;
+        if (_loss > profit) {
+            _profit = 0;
+            _loss -= _profit;
+            _debtPayment = _amountFreed;
+        } else {
+            _loss = 0;
+            _profit -= _loss;
+            _debtPayment = _debtOutstanding;
         }
     }
 
@@ -125,14 +127,13 @@ contract V3Router is BaseStrategyInitializable {
             // Adjust the amount down based on the maxRedeem.
             _amountNeeded = Math.min(
                 _amountNeeded,
-                balance +
-                    v3Vault.convertToAssets(v3Vault.maxRedeem(address(this)))
+                balance + v3Vault.maxWithdraw(address(this), maxLoss)
             );
 
             // Check if we still have something to withdraw.
             if (_amountNeeded > balance) {
-                v3Vault.redeem(
-                    v3Vault.convertToShares(_amountNeeded - balance),
+                v3Vault.withdraw(
+                    _amountNeeded - balance,
                     address(this),
                     address(this),
                     maxLoss
@@ -170,7 +171,7 @@ contract V3Router is BaseStrategyInitializable {
     }
 
     function setMaxLoss(uint256 _newMaxLoss) external onlyAuthorized {
-        require(_newMaxLoss < 10_000, "too high");
+        require(_newMaxLoss <= 10_000, "too high");
         maxLoss = _newMaxLoss;
     }
 
