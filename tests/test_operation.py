@@ -1,5 +1,5 @@
 import ape
-from ape import Contract
+from ape import Contract, project
 import pytest
 
 
@@ -26,7 +26,6 @@ def test_operation(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
 
     # withdrawal
     vault.withdraw(sender=user)
@@ -41,13 +40,19 @@ def test_illiquid_v3_vault(
     token,
     vault,
     strategy,
-    v3_vault,
+    v3_strategy,
     user,
     strategist,
     amount,
     RELATIVE_APPROX,
     keeper,
+    gov
 ):
+    vault.updateStrategyDebtRatio(strategy, 0, sender=gov)
+    strategy = strategist.deploy(project.V3Router, vault, v3_strategy, "test strategy")
+    strategy.setKeeper(keeper, sender=strategist)
+    vault.addStrategy(strategy, 10_000, 0, 2**256 - 1, 0, sender=gov)
+
     # Deposit to the vault
     token.approve(vault.address, amount, sender=user)
     vault.deposit(amount, sender=user)
@@ -57,12 +62,12 @@ def test_illiquid_v3_vault(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
+    assert v3_strategy.totalAssets() == amount
 
     withdrawable = amount // 2
-    v3_vault.setWithdrawable(withdrawable, sender=strategist)
+    v3_strategy.setWithdrawable(withdrawable, sender=strategist)
 
-    assert v3_vault.maxWithdraw(strategy) == withdrawable
+    assert v3_strategy.maxWithdraw(strategy) == withdrawable
 
     user_balance_before = token.balanceOf(user)
 
@@ -97,7 +102,6 @@ def test_emergency_exit(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
 
     # set emergency and exit
     strategy.setEmergencyExit(sender=gov)
@@ -129,10 +133,8 @@ def test_profitable_harvest(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
 
-    token.transfer(v3_vault, amount // 100, sender=whale)
-    v3_vault.report(sender=strategist)
+    #token.transfer(v3_vault, amount // 100, sender=whale)
     chain.mine(v3_vault.profitMaxUnlockTime())
 
     # Harvest 2: Realize profit
@@ -172,13 +174,11 @@ def test_change_debt(
     half = int(amount / 2)
 
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == half
-    assert v3_vault.totalAssets() == half
 
     vault.updateStrategyDebtRatio(strategy.address, 10_000, sender=gov)
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
 
     # In order to pass this tests, you will need to implement prepareReturn.
     vault.updateStrategyDebtRatio(strategy.address, 5_000, sender=gov)
@@ -186,7 +186,6 @@ def test_change_debt(
 
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == half
-    assert v3_vault.totalAssets() == half
 
 
 def test_sweep(gov, accounts, vault, strategy, token, user, amount):

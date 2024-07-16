@@ -2,10 +2,10 @@ name: ape-v2-base-strategy-adapter
 
 plugins:
   - name: solidity
-  - name: vyper
   - name: etherscan
   - name: hardhat
   - name: infura
+  - name: vyper
 
 default_ecosystem: ethereum
 
@@ -15,7 +15,7 @@ dependencies:
     ref: 4.7.1
   - name: yearnV2
     github: yearn/yearn-vaults
-    ref: 0.4.6
+    ref: v0.4.6
   - name: tokenized-strategy
     github: yearn/tokenized-strategy
     ref: v3.0.1

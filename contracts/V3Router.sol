@@ -138,13 +138,14 @@ contract V3Router is BaseStrategyInitializable {
             // Adjust the amount down based on the maxRedeem.
             _amountNeeded = Math.min(
                 _amountNeeded,
-                balance + v3Vault.maxWithdraw(address(this), maxLoss)
+                balance +
+                    v3Vault.convertToAssets(v3Vault.maxRedeem(address(this)))
             );
 
             // Check if we still have something to withdraw.
             if (_amountNeeded > balance) {
-                v3Vault.withdraw(
-                    _amountNeeded - balance,
+                v3Vault.redeem(
+                    v3Vault.convertToShares(_amountNeeded - balance),
                     address(this),
                     address(this),
                     maxLoss

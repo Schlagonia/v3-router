@@ -65,6 +65,7 @@ def weth():
     yield Contract(token_address)
 
 
+
 @pytest.fixture
 def weth_amount(user, weth):
     weth_amount = 10 ** weth.decimals()
@@ -73,15 +74,19 @@ def weth_amount(user, weth):
 
 
 @pytest.fixture
-def v3_vault(token, strategist):
-    v3_vault = strategist.deploy(project.MockV3Strategy, token, "Mock V3 Strategy")
-    v3_vault = project.IStrategyInterface.at(v3_vault.address)
+def v3_vault():
+    v3_vault = project.IVault.at("0xc56413869c6CDf96496f2b1eF801fEDBdFA7dDB0")
     yield v3_vault
 
+@pytest.fixture
+def v3_strategy(token, strategist):
+    v3_strategy = strategist.deploy(project.MockV3Strategy, token, "Mock V3 Strategy")
+    v3_strategy = project.IStrategyInterface.at(v3_strategy.address)
+    yield v3_strategy
 
 @pytest.fixture
 def vault(gov, rewards, guardian, management, token):
-    vault = guardian.deploy(project.dependencies["yearnV2"]["0.4.6"].Vault)
+    vault = guardian.deploy(project.dependencies["yearnv2"]["v0.4.6"].Vault)
     vault.initialize(token, gov, rewards, "", "", guardian, management, sender=gov)
     vault.setDepositLimit(2**256 - 1, sender=gov)
     vault.setManagement(management, sender=gov)
