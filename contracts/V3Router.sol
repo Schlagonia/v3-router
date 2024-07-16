@@ -94,17 +94,28 @@ contract V3Router is BaseStrategyInitializable {
             }
         }
 
-        uint256 _amountFreed;
-        (_amountFreed, _loss) = liquidatePosition(_debtOutstanding + _profit);
+        (uint256 _amountFreed, uint256 _lost) = liquidatePosition(
+            _debtOutstanding + _profit
+        );
 
-        if (_loss > _profit) {
-            _profit = 0;
-            _loss -= _profit;
+        if (_loss > 0) {
+            // Add any more lost on the withdraw
+            _loss += _lost;
             _debtPayment = _amountFreed;
         } else {
-            _loss = 0;
-            _profit -= _loss;
-            _debtPayment = _debtOutstanding;
+            if (_lost > _profit) {
+                // Loss negates all profits.
+                _profit = 0;
+                unchecked {
+                    _loss = _lost - _profit;
+                }
+                _debtPayment = _amountFreed;
+            } else {
+                unchecked {
+                    _profit -= _lost;
+                }
+                _debtPayment = _debtOutstanding;
+            }
         }
     }
 
