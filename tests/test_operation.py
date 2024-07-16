@@ -46,7 +46,7 @@ def test_illiquid_v3_vault(
     amount,
     RELATIVE_APPROX,
     keeper,
-    gov
+    gov,
 ):
     vault.updateStrategyDebtRatio(strategy, 0, sender=gov)
     strategy = strategist.deploy(project.V3Router, vault, v3_strategy, "test strategy")
@@ -134,7 +134,7 @@ def test_profitable_harvest(
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
 
-    #token.transfer(v3_vault, amount // 100, sender=whale)
+    # token.transfer(v3_vault, amount // 100, sender=whale)
     chain.mine(v3_vault.profitMaxUnlockTime())
 
     # Harvest 2: Realize profit
@@ -145,6 +145,7 @@ def test_profitable_harvest(
     chain.mine(1)
     profit = token.balanceOf(vault.address)  # Profits go to vault
 
+    assert profit > 0
     assert token.balanceOf(strategy) == 0
     assert token.balanceOf(vault) == profit
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
