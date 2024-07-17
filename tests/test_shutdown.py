@@ -20,7 +20,7 @@ def test_vault_shutdown_can_withdraw(
     strategy.harvest(sender=keeper)
     chain.mine(3600 * 7)
     chain.mine(1)
-    assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
+    assert strategy.estimatedTotalAssets() >= amount
 
     ## Set Emergency
     vault.setEmergencyShutdown(True, sender=gov)

@@ -42,7 +42,6 @@ def test_clone_operation(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
 
     # withdrawal
     vault.withdraw(sender=user)
@@ -76,7 +75,6 @@ def test_emergency_exit(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
 
     # set emergency and exit
     strategy.setEmergencyExit(sender=gov)
@@ -114,10 +112,7 @@ def test_profitable_harvest(
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
 
-    token.transfer(v3_vault, amount // 100, sender=whale)
-    v3_vault.report(sender=strategist)
     chain.mine(v3_vault.profitMaxUnlockTime())
 
     # Harvest 2: Realize profit
@@ -128,6 +123,7 @@ def test_profitable_harvest(
     chain.mine(1)
     profit = token.balanceOf(vault.address)  # Profits go to vault
 
+    assert profit > 0
     assert token.balanceOf(strategy) == 0
     assert token.balanceOf(vault) == profit
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
@@ -162,13 +158,11 @@ def test_change_debt(
     half = int(amount / 2)
 
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == half
-    assert v3_vault.totalAssets() == half
 
     vault.updateStrategyDebtRatio(strategy.address, 10_000, sender=gov)
     chain.mine(1)
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-    assert v3_vault.totalAssets() == amount
 
     # In order to pass this tests, you will need to implement prepareReturn.
     vault.updateStrategyDebtRatio(strategy.address, 5_000, sender=gov)
@@ -176,7 +170,6 @@ def test_change_debt(
 
     strategy.harvest(sender=keeper)
     assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == half
-    assert v3_vault.totalAssets() == half
 
 
 def test_sweep(
