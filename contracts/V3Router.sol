@@ -144,12 +144,13 @@ contract V3Router is BaseStrategyInitializable {
 
             // Check if we still have something to withdraw.
             if (_amountNeeded > balance) {
-                v3Vault.redeem(
-                    v3Vault.convertToShares(_amountNeeded - balance),
-                    address(this),
-                    address(this),
-                    maxLoss
+                // Use previewWithdraw since it rounds up.
+                uint256 shares = Math.min(
+                    v3Vault.previewWithdraw(_amountNeeded - balance),
+                    v3Vault.balanceOf(address(this))
                 );
+
+                v3Vault.redeem(shares, address(this), address(this), maxLoss);
             }
         }
 
